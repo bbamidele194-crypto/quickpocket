@@ -1,1 +1,54 @@
-.github/workflows/build-apk.yml
+
+name: Build QuickPocket APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          flutter-version: '3.22.3'
+      
+      - name: Save your code
+        run: |
+          cp lib/main.dart /tmp/my_main.dart
+          cp pubspec.yaml /tmp/my_pubspec.yaml
+          echo "Saved"
+      
+      - name: Create Android folder only
+        run: |
+          flutter create . --platforms=android --project-name quickpocket --org com.quickpocket.app --no-pub
+      
+      - name: Restore your code
+        run: |
+          cp /tmp/my_main.dart lib/main.dart
+          cp /tmp/my_pubspec.yaml pubspec.yaml
+          cat pubspec.yaml
+          cat lib/main.dart | head -20
+      
+      - name: Get dependencies
+        run: flutter pub get
+      
+      - name: Build APK
+        run: flutter build apk --debug -v
+      
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: QuickPocket-OPay-8111275146-APK
+          path: build/app/outputs/flutter-apk/app-debug.apk
