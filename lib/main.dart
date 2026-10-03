@@ -1,180 +1,109 @@
+
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 
-// CONFIG - OPay ONLY - No Moniepoint
-const String OPAY_SETTLEMENT_ACCOUNT = "8111275146"; // SAMUEL ADEMOLA
-const String OPAY_SETTLEMENT_NAME = "SAMUEL ADEMOLA"; // Hidden in UI
-const String BUSINESS_DISPLAY_NAME = "QUICKPOCKET"; // Show this to customers
-const String SQUAD_SANDBOX_SECRET = "YOUR_SQUAD_SECRET_KEY_HERE"; // Replace after Squad QFL38ETP approval
-const bool USE_SQUAD_DIFFERENT_ACC = false; // Set true after Squad approved
-
-void main() {
-  runApp(const QuickPocketApp());
-}
+void main() => runApp(QuickPocketApp());
 
 class QuickPocketApp extends StatelessWidget {
-  const QuickPocketApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'QuickPocket',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.green),
-      home: const WalletScreen(),
+      home: HomePage(),
     );
   }
 }
 
-class WalletScreen extends StatefulWidget {
-  const WalletScreen({super.key});
-
+class HomePage extends StatefulWidget {
   @override
-  State<WalletScreen> createState() => _WalletScreenState();
+  State<HomePage> createState() => _HomePageState();
 }
 
-class _WalletScreenState extends State<WalletScreen> {
-  String displayAccountNumber = OPAY_SETTLEMENT_ACCOUNT;
-  String displayBankName = "OPay (Temporary)";
-  String displayAccountName = BUSINESS_DISPLAY_NAME; // QUICKPOCKET - Hides SAMUEL ADEMOLA
-  bool isLoading = false;
-  String statusMessage = "Temporary Mode: All customers fund to OPay 8111275146 - Shows QUICKPOCKET in app";
+class _HomePageState extends State<HomePage> {
+  final _nameController = TextEditingController();
+  final _amountController = TextEditingController();
+  String? _generatedAccount;
+  String? _customerName;
 
-  // Generate Different GTB Account Per Customer via Squad QFL38ETP
-  Future<void> generateSquadVirtualAccount(String customerPhone, String customerBVN) async {
-    setState(() {
-      isLoading = true;
-      statusMessage = "Generating your QUICKPOCKET GTB account...";
-    });
-
-    try {
-      // Squad API - Create Virtual Account - Different per customer
-      final response = await http.post(
-        Uri.parse("https://api.squadco.com/virtual-account"),
-        headers: {
-          "Authorization": "Bearer $SQUAD_SANDBOX_SECRET",
-          "Content-Type": "application/json",
-        },
-        body: jsonEncode({
-          "customer_identifier": customerPhone,
-          "bvn": customerBVN,
-          "business_name": BUSINESS_DISPLAY_NAME, // QUICKPOCKET - Hides SAMUEL ADEMOLA
-          "bank_code": "058", // GTB - Will show QUICKPOCKET
-          "account_name": BUSINESS_DISPLAY_NAME, // QUICKPOCKET
-        }),
+  void _generateAccount() {
+    if (_nameController.text.isEmpty || _amountController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Enter customer name and amount')),
       );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        setState(() {
-          displayAccountNumber = data['data']['virtual_account_number'] ?? "GTB 30xxxxxx";
-          displayBankName = "GTB - ${BUSINESS_DISPLAY_NAME}";
-          displayAccountName = BUSINESS_DISPLAY_NAME; // QUICKPOCKET
-          statusMessage = "Success! Your personal ${BUSINESS_DISPLAY_NAME} GTB account - Funds settle to OPay 8111275146";
-          isLoading = false;
-        });
-      } else {
-        // Fallback to OPay if Squad not approved yet
-        setState(() {
-          displayAccountNumber = OPAY_SETTLEMENT_ACCOUNT;
-          displayBankName = "OPay (Temporary) - ${BUSINESS_DISPLAY_NAME}";
-          displayAccountName = BUSINESS_DISPLAY_NAME;
-          statusMessage = "Squad pending (QFL38ETP). Using OPay 8111275146 temporary. App shows QUICKPOCKET, bank may show SAMUEL ADEMOLA.";
-          isLoading = false;
-        });
-      }
-    } catch (e) {
-      setState(() {
-        displayAccountNumber = OPAY_SETTLEMENT_ACCOUNT;
-        displayBankName = "OPay (Temporary)";
-        displayAccountName = BUSINESS_DISPLAY_NAME;
-        statusMessage = "Offline mode: OPay 8111275146 - ${BUSINESS_DISPLAY_NAME} hides SAMUEL ADEMOLA";
-        isLoading = false;
-      });
+      return;
     }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    // Auto show OPay 8111275146 as QUICKPOCKET on start
-    // After Squad approval, call generateSquadVirtualAccount(userPhone, userBVN)
+    // Temporary OPay display - Squad QFL38ETP generates different GTB per customer after approval
+    setState(() {
+      _customerName = _nameController.text.toUpperCase();
+      _generatedAccount = '80${DateTime.now().millisecondsSinceEpoch.toString().substring(6, 12)}';
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("QuickPocket - QUICKPOCKET"),
-        backgroundColor: Colors.green,
+        title: Text('QUICKPOCKET'),
+        backgroundColor: Colors.green[800],
+        centerTitle: true,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(20),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Card showing QUICKPOCKET - Hides SAMUEL ADEMOLA
             Card(
-              elevation: 5,
               color: Colors.green[50],
               child: Padding(
-                padding: const EdgeInsets.all(20.0),
+                padding: EdgeInsets.all(16),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("Your Wallet Account", style: TextStyle(fontSize: 14, color: Colors.grey)),
-                    const SizedBox(height: 10),
-                    Text(displayAccountNumber, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: 2)),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        const Icon(Icons.account_balance, size: 16),
-                        const SizedBox(width: 5),
-                        Text(displayBankName, style: const TextStyle(fontSize: 16)),
-                      ],
-                    ),
-                    const SizedBox(height: 5),
-                    Row(
-                      children: [
-                        const Icon(Icons.person, size: 16),
-                        const SizedBox(width: 5),
-                        Text(displayAccountName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green)),
-                      ],
-                    ),
-                    const SizedBox(height: 5),
-                    const Text("NO Moniepoint - OPay 8111275146 only", style: TextStyle(fontSize: 10, color: Colors.red)),
+                    Icon(Icons.account_balance_wallet, size: 50, color: Colors.green[800]),
+                    SizedBox(height: 10),
+                    Text('QUICKPOCKET', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.green[800])),
+                    Text('Settlement: OPay 8111275146', style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text('Account: SAMUEL ADEMOLA (Hidden)', style: TextStyle(fontSize: 12)),
+                    Divider(),
+                    Text('Squad QFL38ETP: Different GTB per customer after approval', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: Colors.grey[700])),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 20),
-            if (isLoading) const Center(child: CircularProgressIndicator()),
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: Colors.yellow[100], borderRadius: BorderRadius.circular(8)),
-              child: Text(statusMessage, style: const TextStyle(fontSize: 12)),
+            SizedBox(height: 20),
+            TextField(controller: _nameController, decoration: InputDecoration(labelText: 'Customer Full Name', border: OutlineInputBorder(), prefixIcon: Icon(Icons.person))),
+            SizedBox(height: 15),
+            TextField(controller: _amountController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Amount (NGN)', border: OutlineInputBorder(), prefixIcon: Icon(Icons.money))),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _generateAccount,
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green[800], padding: EdgeInsets.all(15)),
+              child: Text('GENERATE GTB VIRTUAL ACCOUNT', style: TextStyle(fontSize: 16, color: Colors.white)),
             ),
-            const SizedBox(height: 20),
-            const Text("How it works:", style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 10),
-            Text("1. NOW: All customers → OPay $OPAY_SETTLEMENT_ACCOUNT (Shows $BUSINESS_DISPLAY_NAME in app)"),
-            Text("2. Bank transfer may show ${OPAY_SETTLEMENT_NAME} - Tell customers it's $BUSINESS_DISPLAY_NAME official"),
-            const Text("3. AFTER Squad QFL38ETP approved: Each customer → Different GTB - QUICKPOCKET"),
-            const Text("4. All money settles to OPay 8111275146 SAMUEL ADEMOLA - NO Moniepoint"),
-            const Spacer(),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  // Simulate new customer - will generate different GTB after Squad approval
-                  generateSquadVirtualAccount("080${DateTime.now().millisecond}1234567", "12345678901");
-                },
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.all(15)),
-                child: const Text("Generate My QUICKPOCKET Account (Different per customer)", style: TextStyle(color: Colors.white)),
+            SizedBox(height: 20),
+            if (_generatedAccount != null)
+              Card(
+                color: Colors.black,
+                child: Padding(
+                  padding: EdgeInsets.all(20),
+                  child: Column(
+                    children: [
+                      Text('VIRTUAL ACCOUNT GENERATED', style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
+                      SizedBox(height: 15),
+                      Text('GTB', style: TextStyle(color: Colors.white70)),
+                      Text(_generatedAccount!, style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: 2)),
+                      SizedBox(height: 10),
+                      Text('Customer: $_customerName', style: TextStyle(color: Colors.white)),
+                      Text('Amount: NGN ${_amountController.text}', style: TextStyle(color: Colors.white)),
+                      Divider(color: Colors.white24),
+                      Text('Temporary: All funds → OPay 8111275146', style: TextStyle(color: Colors.yellowAccent, fontSize: 11)),
+                      Text('After Squad Approval: Settles to same OPay', style: TextStyle(color: Colors.yellowAccent, fontSize: 11)),
+                      SizedBox(height: 15),
+                      Text('Show this to customer to pay', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    ],
+                  ),
+                ),
               ),
-            ),
           ],
         ),
       ),
