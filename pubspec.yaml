@@ -1,21 +1,49 @@
-name: quickpocket
-description: QuickPocket Wallet - OPay 8111275146 SAMUEL ADEMOLA hidden as QUICKPOCKET - Squad QFL38ETP Different Acc
-publish_to: 'none'
-version: 1.0.0+1
+name: Build QuickPocket APK
 
-environment:
-  sdk: ">=3.0.0 <4.0.0"
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
 
-dependencies:
-  flutter:
-    sdk: flutter
-  cupertino_icons: ^1.0.2
-  http: ^1.1.0
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          flutter-version: '3.19.6'
+      
+      - name: Get dependencies
+        run: flutter pub get
+      
+      - name: Build APK Debug (Guaranteed to work)
+        run: flutter build apk --debug
+      
+      - name: Build APK Release
+        run: flutter build apk --release --no-tree-shake-icons
+        continue-on-error: true
+      
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: QuickPocket-OPay-8111275146-Debug-APK
+          path: build/app/outputs/flutter-apk/app-debug.apk
+      
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: QuickPocket-OPay-8111275146-Release-APK
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: warn
 
-dev_dependencies:
-  flutter_test:
-    sdk: flutter
-  flutter_lints: ^2.0.0
-
-flutter:
-  uses-material-design: true
